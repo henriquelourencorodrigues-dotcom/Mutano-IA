@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#060b14">
+<title>Mutano</title>
+<style>
+  :root{--bg:#060b14;--panel:#0d1626;--line:#1b2b45;--fg:#d8e6ff;--dim:#6f86a8;--accent:#27d3ff;--warn:#ff9f43}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:radial-gradient(120% 80% at 50% 0%,#0b1a30 0%,var(--bg) 60%);color:var(--fg);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px}
+  h1{margin:0;font-size:15px;letter-spacing:.35em;font-weight:600;color:var(--accent)}
+  .icons button{background:none;border:1px solid var(--line);color:var(--dim);border-radius:10px;padding:6px 10px;font-size:13px;margin-left:6px}
+  #log{flex:1;overflow-y:auto;padding:8px 16px;display:flex;flex-direction:column;gap:10px}
+  .m{max-width:88%;padding:10px 13px;border-radius:14px;border:1px solid var(--line);background:var(--panel);white-space:pre-wrap;word-wrap:break-word}
+  .m.u{align-self:flex-end;border-color:#244a6b}
+  .m.j{align-self:flex-start}
+  .m.s{align-self:center;color:var(--dim);font-size:13px;border:none;background:none;text-align:center}
+  footer{display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 16px 16px}
+  #status{color:var(--dim);font-size:13px;min-height:18px}
+  #orb{width:88px;height:88px;border-radius:50%;border:2px solid var(--accent);background:radial-gradient(circle at 50% 40%,#0f3a52,#08202f);color:var(--accent);font-size:13px;letter-spacing:.15em;box-shadow:0 0 24px #27d3ff44}
+  #orb.on{animation:p 1.1s infinite;background:radial-gradient(circle at 50% 40%,#17607f,#0b3248)}
+  #orb.think{border-color:var(--warn);color:var(--warn);box-shadow:0 0 24px #ff9f4355}
+  @keyframes p{50%{box-shadow:0 0 44px #27d3ffaa;transform:scale(1.05)}}
+  @media (prefers-reduced-motion:reduce){#orb.on{animation:none}}
+  #row{display:flex;gap:8px;width:100%;max-width:560px}
+  #txt{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--fg);padding:10px 12px;font-size:16px}
+  #send{background:var(--accent);color:#04121c;border:0;border-radius:12px;padding:0 16px;font-weight:600}
+  #cfg{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;padding:16px}
+  #cfg.open{display:flex}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:10px;max-height:92%;overflow:auto}
+  .card h2{margin:0;font-size:17px}
+  .card p{margin:0;color:var(--dim);font-size:14px}
+  .card a{color:var(--accent)}
+  .card input[type=text],.card input[type=password],.card textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:10px;font-size:15px;font-family:inherit}
+  .card label{font-size:13px;color:var(--dim)}
+  .chk{display:flex;gap:8px;align-items:center;color:var(--fg)!important;font-size:15px!important}
+  .btns{display:flex;gap:8px;justify-content:flex-end}
+  .btns button{border-radius:10px;padding:10px 16px;border:1px solid var(--line);background:none;color:var(--fg);font-size:15px}
+  .btns .pri{background:var(--accent);color:#04121c;border:0;font-weight:600}
+</style>
+</head>
+<body>
+<header><h1>MUTANO</h1><div class="icons"><button id="mute">🔊</button><button id="gear">Ajustes</button></div></header>
+<div id="log"></div>
+<footer>
+  <div id="status"></div>
+  <button id="orb">OUVIR</button>
+  <form id="row"><input id="txt" type="text" placeholder="Ou digite aqui…" autocomplete="off"><button id="send">Enviar</button></form>
+</footer>
+
+<div id="cfg"><div class="card">
+  <h2>Ajustes</h2>
+  <p>Chave gratuita do Gemini: abra <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, entre com sua conta Google, toque em "Criar chave de API" e cole aqui. Fica salva só neste aparelho.</p>
+  <label for="key">Chave de API</label>
+  <input id="key" type="password" autocomplete="off" placeholder="AIza...">
+  <label for="name">Como devo te chamar?</label>
+  <input id="name" type="text" placeholder="Henrique">
+  <label for="model">Modelo</label>
+  <input id="model" type="text" value="gemini-flash-latest">
+  <label class="chk"><input id="wake" type="checkbox"> Só responder quando eu disser "Mutano" primeiro</label>
+  <div class="btns"><button id="clear">Limpar conversa</button><button class="pri" id="save">Salvar</button></div>
+</div></div>
+
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  var store={get:function(k,d){try{var v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}},set:function(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+  var S={key:store.get('j_key',''),name:store.get('j_name',''),model:store.get('j_model','gemini-flash-latest'),loop:true,wake:store.get('j_wake','0')==='1',mute:store.get('j_mute','0')==='1'};
+  var hist=[],listening=false,busy=false,rec=null;
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+  function add(cls,t){var d=document.createElement('div');d.className='m '+cls;d.textContent=t;$('log').appendChild(d);$('log').scrollTop=1e9;return d}
+  function status(t){$('status').textContent=t}
+  function setOrb(){var o=$('orb');o.className=listening?'on':(busy?'think':'');o.textContent=listening?'OUVINDO':(busy?'PENSANDO':'OUVIR')}
+
+  function speak(text,done){
+    if(S.mute||!window.speechSynthesis){done&&done();return}
+    speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance(text.replace(/[*#_`>]/g,'').replace(/https?:\/\/\S+/g,'link'));
+    u.lang='pt-BR';
+    var v=speechSynthesis.getVoices().filter(function(x){return /pt[-_]BR/i.test(x.lang)})[0];
+    if(v)u.voice=v;
+    u.rate=1.05;
+    u.onend=function(){done&&done()};
+    u.onerror=function(){done&&done()};
+    speechSynthesis.speak(u);
+  }
+
+  function local(q){
+    var t=q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    var m;
+    if(/que horas|horas sao|hora agora/.test(t)){return 'Agora são '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.'}
+    if(/que dia|data de hoje|dia e hoje/.test(t)){return 'Hoje é '+new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'.'}
+    if((m=t.match(/(?:tocar|toca|abrir|abre|procurar|pesquisar)\s+(.+?)\s+no youtube/))){open('https://www.youtube.com/results?search_query='+encodeURIComponent(m[1]),'_blank');return 'Abrindo '+m[1]+' no YouTube.'}
+    if(/abr(ir|e) (o )?youtube/.test(t)){open('https://www.youtube.com','_blank');return 'Abrindo o YouTube.'}
+    if(/abr(ir|e) (o )?whatsapp/.test(t)){open('https://wa.me/','_blank');return 'Abrindo o WhatsApp.'}
+    if((m=t.match(/(?:rota|navegar|como chegar|ir) (?:para|ate|pra) (.+)/))){open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(m[1]),'_blank');return 'Abrindo a rota para '+m[1]+' no Maps.'}
+    if((m=t.match(/(?:pesquisar|pesquisa|buscar|busca) (?:por |sobre )?(.+?)(?: no google)?$/))){open('https://www.google.com/search?q='+encodeURIComponent(m[1]),'_blank');return 'Pesquisando '+m[1]+' no Google.'}
+    return null;
+  }
+
+  function ask(q){
+    var sys='Você é o Mutano, um assistente pessoal por voz. Responda sempre em português do Brasil, de forma educada, direta e com leve bom humor. Suas respostas serão lidas em voz alta, então use no máximo 3 frases curtas, sem markdown, sem listas e sem emojis, a menos que o usuário peça detalhes.'+(S.name?' O usuário se chama '+S.name+'.':'');
+    hist.push({role:'user',parts:[{text:q}]});
+    hist=hist.slice(-12);
+    var url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(S.model||'gemini-flash-latest')+':generateContent?key='+encodeURIComponent(S.key);
+    return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:hist})})
+      .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('Erro '+r.status));return j})})
+      .then(function(j){
+        var c=j.candidates&&j.candidates[0];
+        var t=c&&c.content&&c.content.parts?c.content.parts.map(function(p){return p.text||''}).join(''):'';
+        if(!t)throw new Error('Resposta vazia.');
+        hist.push({role:'model',parts:[{text:t}]});
+        return t;
+      });
+  }
+
+  function handle(q){
+    q=(q||'').trim();
+    if(!q||busy)return;
+    if(S.wake&&!typed){
+      var w=q.match(/^\s*(ei |oi |ola |olá )?mutano[\s,.!?:-]*(.*)$/i);
+      if(!w){again();return}
+      q=(w[2]||'').trim();
+      if(!q){add('j','Pois não?');speak('Pois não?',again);return}
+    }
+    add('u',q);
+    var l=local(q);
+    if(l){add('j',l);speak(l,again);return}
+    if(!S.key){add('s','Falta a chave do Gemini. Toque em Ajustes para colocar.');openCfg();return}
+    busy=true;setOrb();status('Pensando…');
+    ask(q).then(function(t){
+      busy=false;setOrb();status('');add('j',t);speak(t,again);
+    }).catch(function(e){
+      busy=false;setOrb();status('');hist.pop();
+      var msg=String(e.message||e);
+      add('s','Erro: '+msg);
+      if(/API key|API_KEY|permission/i.test(msg))openCfg();
+    });
+  }
+
+  function again(){
+    if(S.loop&&!busy&&!listening&&!$('cfg').classList.contains('open'))setTimeout(function(){if(S.loop&&!busy&&!listening)listen()},400);
+  }
+
+  function listen(){
+    if(!SR){add('s','Este navegador não reconhece voz. Use o Chrome (Android) ou o Safari (iPhone), ou digite abaixo.');return}
+    if(listening||busy)return;
+    if(window.speechSynthesis)speechSynthesis.cancel();
+    rec=new SR();rec.lang='pt-BR';rec.interimResults=true;rec.continuous=false;
+    var final='',tmp=null;
+    rec.onstart=function(){listening=true;setOrb();status('Estou ouvindo…')};
+    rec.onresult=function(e){
+      var s='';
+      for(var i=e.resultIndex;i<e.results.length;i++){s+=e.results[i][0].transcript;if(e.results[i].isFinal)final=s}
+      if(!final)status(s)
+    };
+    rec.onerror=function(e){
+      listening=false;setOrb();status('');
+      if(e.error==='not-allowed'||e.error==='service-not-allowed')add('s','Permita o microfone nas configurações do navegador para este site.');
+      else if(e.error==='network')add('s','Sem conexão para reconhecer a voz.');
+      if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='network'||e.error==='audio-capture'){S.loop=false;add('s','Escuta pausada. Toque no botão para ativar de novo.')}
+    };
+    rec.onend=function(){
+      listening=false;setOrb();status('');
+      if(final){handle(final)}else{again()}
+    };
+    try{rec.start()}catch(e){}
+  }
+
+  function stopListen(){if(rec){try{rec.abort()}catch(e){}}listening=false;setOrb();status('')}
+
+  function openCfg(){stopListen();$('key').value=S.key;$('name').value=S.name;$('model').value=S.model;$('wake').checked=S.wake;$('cfg').classList.add('open')}
+
+  $('orb').onclick=function(){
+    if(S.loop||listening){S.loop=false;stopListen();status('Escuta pausada. Toque para ativar.')}
+    else{S.loop=true;if(window.speechSynthesis)speechSynthesis.cancel();listen()}
+  };
+  /* Navegadores exigem um toque para liberar o microfone. O primeiro toque em qualquer lugar da tela ativa a escuta permanente. */
+  var armed=false;
+  function arm(){if(armed)return;armed=true;if(S.loop&&!listening&&!busy)listen()}
+  document.addEventListener('pointerdown',function(e){if(e.target.closest('#cfg,#gear,#mute,#row'))return;arm()},{once:false});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden&&S.loop&&!listening&&!busy)setTimeout(listen,300)});
+  var typed=false;
+  $('row').onsubmit=function(e){e.preventDefault();var v=$('txt').value;$('txt').value='';typed=true;handle(v);typed=false};
+  $('gear').onclick=openCfg;
+  $('mute').onclick=function(){S.mute=!S.mute;store.set('j_mute',S.mute?'1':'0');$('mute').textContent=S.mute?'🔇':'🔊';if(S.mute&&window.speechSynthesis)speechSynthesis.cancel()};
+  $('save').onclick=function(){
+    S.key=$('key').value.trim();S.name=$('name').value.trim();S.model=$('model').value.trim()||'gemini-flash-latest';S.wake=$('wake').checked;
+    store.set('j_key',S.key);store.set('j_name',S.name);store.set('j_model',S.model);store.set('j_wake',S.wake?'1':'0');
+    $('cfg').classList.remove('open');
+    S.loop=true;setTimeout(listen,300);
+  };
+  $('clear').onclick=function(){hist=[];$('log').innerHTML='';$('cfg').classList.remove('open')};
+  $('mute').textContent=S.mute?'🔇':'🔊';
+  if(window.speechSynthesis)speechSynthesis.getVoices();
+
+  add('s','Mutano online. Toque uma vez na tela e depois é só falar, sem tocar mais em nada.\nExemplos: "que horas são", "tocar Legião Urbana no YouTube", "rota para o aeroporto", ou qualquer pergunta.');
+  if(!S.key){add('s','Primeiro passo: toque em Ajustes e cole sua chave gratuita do Gemini.')}
+  S.loop=true;
+  try{listen()}catch(e){}
+})();
+</script>
+</body>
+</html>
